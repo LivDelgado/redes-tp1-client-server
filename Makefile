@@ -11,10 +11,10 @@ SRCEXT := c
 all: client server
 
 client:
-	$(CC) $(CFLAGS) -o $(CLIENT_FILE) -c $(CLIENT_FILE).$(SRCEXT)
+	$(CC) $(CFLAGS) -o $(CLIENT_FILE) $(CLIENT_FILE).$(SRCEXT)
 
 server:
-	$(CC) $(CFLAGS) -o $(SERVER_FILE) -c $(SERVER_FILE).$(SRCEXT)
+	$(CC) $(CFLAGS) -o $(SERVER_FILE) $(SERVER_FILE).$(SRCEXT)
 
 clean:
 	@rm -rf $(CLIENT_FILE) $(SERVER_FILE)
