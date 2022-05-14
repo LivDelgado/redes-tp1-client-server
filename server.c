@@ -92,12 +92,14 @@ void bindToLocalAddress(int serverSocket, int port, int addressIsV6) {
 }
 
 void setTheServerToListen(int serverSocket, int port) {
+    printf("Trying to set the server to listen at port %i.\n", port);
+
     if (listen(serverSocket, MAX_PENDING) < 0) {
         printErrorAndExit("Server could not listen.");
         close(serverSocket);
     }
 
-    printf("Server listening at port %i", port);
+    printf("Server listening at port %i\n", port);
 }
 
 void handleClient(int clientSocket) {
@@ -197,6 +199,7 @@ int main(int argc, char *argv[]) {
     char *addressType = argv[1]; // primeiro argumento -> v4 ou v6
     validateAddressType(addressType);
     int addressIsV6 = (addressType == "v6");
+    printf("Address version is v6? %i\n", addressIsV6);
 
     int port = DEFAULT_PORT;
     if (argc == 3) {
@@ -204,13 +207,13 @@ int main(int argc, char *argv[]) {
     }
 
     puts("Already got everything we needed to create the socket.");
-
     int serverSocket = createTcpSocket(addressIsV6);
 
     puts("Socket created! Binding to local address.");
     bindToLocalAddress(serverSocket, port, addressIsV6);
 
     puts("Let's make this server listen to something.");
+    puts("calling setTheServerToListen!");
     setTheServerToListen(serverSocket, port);
 
     handleConnections(serverSocket, addressIsV6);
