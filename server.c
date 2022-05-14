@@ -5,10 +5,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
+static const int BUFSIZE = 500; // tamanho máximo da mensagem
 static const int MAX_PENDING = 5; // número máximo de solicitações de conexão
 static const int DEFAULT_PORT = 51511; // porta default de conexão
 static const int ALLOW_IPV6_CONNECTION = 1; // flag de permissão para aceitar trabalhar com endereços ipv6
+
 
 void printErrorAndExit(char *errorMessage) {
     puts(errorMessage);
@@ -61,6 +64,7 @@ void bindToLocalIpv4Address(int serverSocket, int port) {
     // ligar ao endereço local
     if (bind(serverSocket, (struct sockaddr*) &serverAddress, sizeof(serverAddress)) < 0) {
         printErrorAndExit("Bind failed!");
+        close(serverSocket);
     }
 }
 
@@ -75,6 +79,7 @@ void bindToLocalIpv6Address(int serverSocket, int port) {
     // ligar ao endereço local
     if (bind(serverSocket, (struct sockaddr*) &serverAddress, sizeof(serverAddress)) < 0) {
         printErrorAndExit("Bind failed!");
+        close(serverSocket);
     }
 }
 
@@ -89,13 +94,96 @@ void bindToLocalAddress(int serverSocket, int port, int addressIsV6) {
 void setTheServerToListen(int serverSocket, int port) {
     if (listen(serverSocket, MAX_PENDING) < 0) {
         printErrorAndExit("Server could not listen.");
+        close(serverSocket);
     }
 
-    fprintf(stdout, "Server listening at port %i", port);
+    printf("Server listening at port %i", port);
 }
 
-void handleConnections(int serverSocket) {
+void handleClient(int clientSocket) {
+    char buffer[BUFSIZE]; // buffer for echo string
+
+    // Receive message from client
+    ssize_t numBytesRcvd = recv(clientSocket, buffer, BUFSIZE, 0);
+    if (numBytesRcvd < 0) {
+        printErrorAndExit("recv() failed");
+    }
+
+    // Send received string and receive again until end of stream
+    while (numBytesRcvd > 0) { // 0 indicates end of stream
+        // Echo message back to client
+        ssize_t numBytesSent = send(clientSocket, buffer, numBytesRcvd, 0);
+        if (numBytesSent < 0) {
+            printErrorAndExit("send() failed");
+        } else if (numBytesSent != numBytesRcvd) {
+            printErrorAndExit("send() sent unexpected number of bytes");
+        }
+
+        // See if there is more data to receive
+        numBytesRcvd = recv(clientSocket, buffer, BUFSIZE, 0);
+        if (numBytesRcvd < 0)
+            printErrorAndExit("recv() failed");
+    }
+
+    close(clientSocket); // Close client socket
+}
+
+void handleIpv4(int serverSocket) {
+    while (1) {
+        struct sockaddr_in clientAddress;
+        
+        socklen_t clientAddressLength = sizeof(clientAddress);
+
+        // Wait for a client to connect
+        int clientSocket = accept(serverSocket, (struct sockaddr *) &clientAddress, &clientAddressLength);
+        if (clientSocket < 0) {
+            printErrorAndExit("Failed to accept connection from client.");
+        }
     
+        puts("A client just connected!");
+
+        char clientName[INET_ADDRSTRLEN]; // String to contain client address
+        if (inet_ntop(AF_INET, &clientAddress.sin_addr.s_addr, clientName, sizeof(clientName)) != NULL) {
+            printf("Handling client %s/%d\n", clientName, ntohs(clientAddress.sin_port));
+        } else {
+            puts("Unable to get client address");
+        }
+
+        handleClient(clientSocket);
+    }
+}
+
+void handleIpv6(int serverSocket) {
+    while (1) {
+        struct sockaddr_in6 clientAddress;
+        
+        socklen_t clientAddressLength = sizeof(clientAddress);
+
+        // Wait for a client to connect
+        int clientSocket = accept(serverSocket, (struct sockaddr *) &clientAddress, &clientAddressLength);
+        if (clientSocket < 0) {
+            printErrorAndExit("Failed to accept connection from client.");
+        }
+    
+        puts("A client just connected!");
+
+        char clientName[INET6_ADDRSTRLEN]; // String to contain client address
+        if (inet_ntop(AF_INET6, &clientAddress.sin6_addr.s6_addr, clientName, sizeof(clientName)) != NULL) {
+            printf("Handling client %s/%d\n", clientName, ntohs(clientAddress.sin6_port));
+        } else {
+            puts("Unable to get client address");
+        }
+
+        handleClient(clientSocket);
+    }
+}
+
+void handleConnections(int serverSocket, int addressIsV6) {
+    if (addressIsV6) {
+        handleIpv6(serverSocket);
+    } else {
+        handleIpv4(serverSocket);
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -115,9 +203,15 @@ int main(int argc, char *argv[]) {
         port = atoi(argv[2]); // segundo argumento (opcional) -> porta
     }
 
+    puts("Already got everything we needed to create the socket.");
+
     int serverSocket = createTcpSocket(addressIsV6);
+
+    puts("Socket created! Binding to local address.");
     bindToLocalAddress(serverSocket, port, addressIsV6);
+
+    puts("Let's make this server listen to something.");
     setTheServerToListen(serverSocket, port);
 
-    handleConnections(serverSocket);
+    handleConnections(serverSocket, addressIsV6);
 }
