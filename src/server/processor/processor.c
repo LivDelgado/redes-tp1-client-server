@@ -17,9 +17,68 @@ static const char *SPLITTER = " ";
 // buffer size
 static const int BUFSIZE = 500;
 
+sensor *initializeSensors()
+{
+    sensor *sensors = malloc(sizeof(sensor) * 4);
+
+    sensor temperature, pressure, speed, current;
+
+    temperature.id = 1;
+    temperature.name = "temperatura";
+
+    pressure.id = 2;
+    pressure.name = "pressão";
+
+    speed.id = 3;
+    speed.name = "velocidade";
+
+    current.id = 4;
+    current.name = "corrente";
+
+    sensors = (sensor[4]){temperature, pressure, speed, current};
+
+    return sensors;
+}
+
+equipment *initializeEquipments()
+{
+    equipment *equipments = malloc(sizeof(equipment) * 4);
+
+    equipment belt, crane, overhead, forkLift;
+
+    belt.id = 1;
+    belt.name = "esteira";
+    belt.sensors = NULL;
+
+    crane.id = 2;
+    crane.name = "guindaste";
+    crane.sensors = NULL;
+
+    overhead.id = 3;
+    overhead.name = "ponte rolante";
+    overhead.sensors = NULL;
+
+    forkLift.id = 4;
+    forkLift.name = "empilhadeira";
+    forkLift.sensors = NULL;
+
+    equipments = (equipment[4]){belt, crane, overhead, forkLift};
+
+    return equipments;
+}
+
+steel *newSteelIndustryBuilding()
+{
+    steel *newBuilding = malloc(sizeof(steel));
+    newBuilding->quantityOfSensors = 0;
+    newBuilding->sensors = initializeSensors();
+    newBuilding->equipments = initializeEquipments();
+
+    return newBuilding;
+}
+
 int getCommandType(char *command)
 {
-    printf("command %s, length: %lu\n", command, strlen(command));
     if (strcmp(command, KILL_COMMAND) == 0)
     {
         return KILL;
@@ -80,7 +139,7 @@ char *processListCommand(char *message) { return NULL; }
 
 char *processReadCommand(char *message) { return NULL; }
 
-char *processCommand(int commandType, char *message)
+char *processCommand(int commandType, char *message, steel *steelBuilding)
 {
     switch (commandType)
     {
@@ -99,9 +158,8 @@ char *processCommand(int commandType, char *message)
     }
 }
 
-char *processMessage(char *originalMessage)
+char *processMessage(char *originalMessage, steel *steelBuilding)
 {
-    puts("reached the processor");
     char message[BUFSIZE];
     memset(&message, 0, sizeof(message));
 
@@ -121,5 +179,5 @@ char *processMessage(char *originalMessage)
     // reset command
     memset(&command, 0, sizeof(command));
 
-    return processCommand(commandType, originalMessage);
+    return processCommand(commandType, originalMessage, steelBuilding);
 }

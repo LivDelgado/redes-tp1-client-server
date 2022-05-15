@@ -128,6 +128,8 @@ void setTheServerToListen(int serverSocket, int port)
 
 void handleClient(int serverSocket, int clientSocket)
 {
+    steel *steelBuilding = newSteelIndustryBuilding();
+
     char buffer[BUFSIZE]; // buffer for echo string
     // reset buffer to avoid garbage
     memset(&buffer, 0, sizeof(buffer));
@@ -160,7 +162,7 @@ void handleClient(int serverSocket, int clientSocket)
         // remove last character because it is a line break
         strncpy(message, buffer, strlen(buffer) - 1);
 
-        responseToClient = processMessage(message);
+        responseToClient = processMessage(message, steelBuilding);
         memset(&message, 0, sizeof(message)); // clean message up
 
         // if some error happened, close connection and leave the handler
@@ -176,6 +178,7 @@ void handleClient(int serverSocket, int clientSocket)
             puts("\nWARNING: kill command. shutting server down!!");
             close(clientSocket);
             close(serverSocket);
+            free(steelBuilding);
             exit(0);
         }
 
@@ -198,6 +201,7 @@ void handleClient(int serverSocket, int clientSocket)
     } while (numberOfBytesReceived > 0);
 
     close(clientSocket); // Close client socket
+    free(steelBuilding);
 }
 
 void handleIpv4(int serverSocket)
