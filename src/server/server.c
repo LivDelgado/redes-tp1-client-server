@@ -7,23 +7,13 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+#include "processor.h"
+
 // constants related to the protocol defined
 static const int BUFSIZE = 500;             // tamanho máximo da mensagem
 static const int MAX_PENDING = 5;           // número máximo de solicitações de conexão
 static const int DEFAULT_PORT = 51511;      // porta default de conexão
 static const int ALLOW_IPV6_CONNECTION = 1; // flag de permissão para aceitar trabalhar com endereços ipv6
-
-// constants related to the commands processed by the server
-static const char *KILL_COMMAND = "kill";
-static const int KILL = 1;
-static const char *ADD_COMMAND = "add";
-static const int ADD = 2;
-static const char *REMOVE_COMMAND = "remove";
-static const int REMOVE = 3;
-static const char *LIST_COMMAND = "list";
-static const int LIST = 4;
-static const char *READ_COMMAND = "read";
-static const int READ = 5;
 
 void printErrorAndExit(char *errorMessage)
 {
@@ -136,68 +126,6 @@ void setTheServerToListen(int serverSocket, int port)
     printf("Server listening at port %i\n", port);
 }
 
-int getCommandType(char *command)
-{
-    int wordLength = strlen(command);
-
-    if (strcmp(command, KILL_COMMAND) == 0)
-    {
-        return KILL;
-    }
-    else if (strcmp(command, ADD_COMMAND) == 0)
-    {
-        return ADD;
-    }
-    else if (strcmp(command, LIST_COMMAND) == 0)
-    {
-        return LIST;
-    }
-    else if (strcmp(command, REMOVE_COMMAND) == 0)
-    {
-        return REMOVE;
-    }
-    else if (strcmp(command, READ_COMMAND) == 0)
-    {
-        return READ;
-    }
-    else
-    {
-        return -1;
-    }
-}
-
-char *processMessage(char *originalMessage, int clientSocket)
-{
-    char message[BUFSIZE];
-    strncpy(message, originalMessage, strlen(originalMessage) - 1);
-
-    // split message by spaces
-    char *word;
-    int wordCounter = 0;
-    char *splitter = " ";
-
-    word = strtok(message, splitter);
-    int commandType = getCommandType(word);
-
-    if (commandType < 0)
-    {
-        close(clientSocket);
-        puts("Command unknown sent by client. Connection closed.");
-        return NULL;
-    }
-
-    while (word != NULL)
-    {
-        wordCounter += 1;
-        word = strtok(NULL, " ");
-    }
-
-    // reset message
-    memset(&message, 0, sizeof(message));
-
-    return "this is a server response";
-}
-
 void handleClient(int clientSocket)
 {
     char buffer[BUFSIZE]; // buffer for echo string
@@ -230,12 +158,14 @@ void handleClient(int clientSocket)
         // remove last character because it is a line break
         strncpy(message, buffer, strlen(buffer) - 1);
 
-        responseToClient = processMessage(message, clientSocket);
+        responseToClient = processMessage(message);
         memset(&message, 0, sizeof(message)); // clean message up
 
-        // if some error happened, leave the handler
+        // if some error happened, close connection and leave the handler
         if (responseToClient == NULL)
         {
+            close(clientSocket);
+            puts("Unknown command sent by client. Connection closed.");
             return;
         }
 

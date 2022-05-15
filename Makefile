@@ -1,20 +1,31 @@
-# cc and flags
 CC = gcc
-CFLAGS = #-g -Wall -I include/
+CFLAGS  = -g -Wall
+INCLUDE_FLAGS = -I include/
 
-# specific files
-CLIENT_FILE = client
-SERVER_FILE = server
+default: client server
 
-SRCEXT := c
 
-all: client server
+## COMPILING THE CLIENT
+client:  client.o
+	$(CC) $(CFLAGS) -o client obj/client.o
 
-client:
-	$(CC) $(CFLAGS) -o $(CLIENT_FILE) $(CLIENT_FILE).$(SRCEXT)
+client.o:  src/client/client.c
+	@mkdir -p obj
+	$(CC) $(CFLAGS) -c src/client/client.c -o obj/client.o
 
-server:
-	$(CC) $(CFLAGS) -o $(SERVER_FILE) $(SERVER_FILE).$(SRCEXT)
+## COMPILING THE SERVER
+server:  server.o processor.o
+	$(CC) $(CFLAGS) -o server obj/server.o obj/processor.o
 
+server.o:  src/server/server.c include/processor.h 
+	@mkdir -p obj
+	$(CC) $(CFLAGS) $(INCLUDE_FLAGS) -c src/server/server.c -o obj/server.o
+
+processor.o: src/server/processor/processor.c include/processor.h 
+	@mkdir -p obj
+	$(CC) $(CFLAGS) $(INCLUDE_FLAGS) -c src/server/processor/processor.c -o obj/processor.o
+
+
+## CLEANING THE FILES
 clean:
-	@rm -rf $(CLIENT_FILE) $(SERVER_FILE)
+	@rm -rf ./obj/* client server

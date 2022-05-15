@@ -109,9 +109,9 @@ void communicateWithServer(int clientSocket)
    {
       char *message = NULL; // create new message
       size_t messageLength;
-      int read;
+      
       printf("> ");
-      read = getline(&message, &messageLength, stdin); // get the message from user input
+      getline(&message, &messageLength, stdin); // get the message from user input
 
       // saída para desligar o cliente sem desligar o servidor
       if (strcmp(message, "close client\n") == 0)
