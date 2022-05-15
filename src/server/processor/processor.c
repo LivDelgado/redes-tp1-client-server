@@ -59,8 +59,6 @@ char *processKillCommand(char *message)
     word = strtok(message, SPLITTER);
     word = strtok(NULL, " ");
 
-    printf("word: %s", word);
-
     if (word == NULL)
     {
         output = "kill";
