@@ -195,6 +195,8 @@ char *processMessage(char *originalMessage, int clientSocket)
 void handleClient(int clientSocket)
 {
     char buffer[BUFSIZE]; // buffer for echo string
+    // reset buffer to avoid garbage
+    memset(&buffer, 0, sizeof(buffer));
 
     ssize_t numberOfBytesReceived;
     char *responseToClient;
@@ -208,9 +210,13 @@ void handleClient(int clientSocket)
         {
             printErrorAndExit("recv() failed");
         }
+        else if (numberOfBytesReceived == 0) {
+            puts("Client closed the connection!");
+            close(clientSocket);
+            return;
+        }
 
-        printf("< ");
-        puts(buffer);
+        printf("< %s", buffer);
 
         // process message and return the string to send back to the client
         char message[BUFSIZE];
@@ -231,7 +237,7 @@ void handleClient(int clientSocket)
         // Echo message back to client
         ssize_t numberOfBytesSent = send(clientSocket, responseToClient, strlen(responseToClient), 0);
         printf("> ");
-        puts(buffer);
+        puts(responseToClient);
 
         if (numberOfBytesSent < 0)
         {
