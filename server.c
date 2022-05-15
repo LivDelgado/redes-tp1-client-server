@@ -7,10 +7,17 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+// constants related to the protocol defined
 static const int BUFSIZE = 500;             // tamanho máximo da mensagem
 static const int MAX_PENDING = 5;           // número máximo de solicitações de conexão
 static const int DEFAULT_PORT = 51511;      // porta default de conexão
 static const int ALLOW_IPV6_CONNECTION = 1; // flag de permissão para aceitar trabalhar com endereços ipv6
+
+// constants related to the commands processed by the server
+static const char *KILL = "kill";
+static const char *ADD = "add";
+static const char *REMOVE = "remove";
+static const char *LIST = "list";
 
 void printErrorAndExit(char *errorMessage)
 {
@@ -68,7 +75,7 @@ void bindToLocalIpv4Address(int serverSocket, int port)
 {
     // cria struct de endereço local
     struct sockaddr_in serverAddress;                  // endereço local
-    memset(&serverAddress, 0, sizeof(serverAddress));  // zero out structure
+    memset(&serverAddress, 0, sizeof(serverAddress));  // clear out structure
     serverAddress.sin_family = AF_INET;                // IPv4
     serverAddress.sin_addr.s_addr = htonl(INADDR_ANY); // any incoming interface
     serverAddress.sin_port = htons(port);              // local port
@@ -123,23 +130,77 @@ void setTheServerToListen(int serverSocket, int port)
     printf("Server listening at port %i\n", port);
 }
 
+int verifyCommandIsValid(char *command)
+{
+    printf("command: %s, %i", command, strlen(command));
+
+    if ((strcmp(command, KILL) == 0) ||
+        (strcmp(command, ADD) == 0) ||
+        (strcmp(command, LIST) == 0) ||
+        (strcmp(command, REMOVE) == 0))
+    {
+        return 1;
+    }
+
+    puts("invalid command!");
+    return 0;
+}
+
+char *processMessage(char *message, int clientSocket)
+{
+    // split message by spaces
+    char *word;
+    int wordCounter = 0;
+    char *splitter = " ";
+
+    word = strtok(message, splitter);
+    puts(message);
+
+    int validCommand = verifyCommandIsValid(word);   
+    if (validCommand == 0)
+    {
+        close(clientSocket);
+        puts("Command unknown sent by client. Connection closed.");
+        return NULL;
+    }
+
+    while (word != NULL)
+    {
+        wordCounter += 1;
+        word = strtok(NULL, " ");
+    }
+
+    return "";
+}
+
 void handleClient(int clientSocket)
 {
     char buffer[BUFSIZE]; // buffer for echo string
 
-    // Receive message from client
-    ssize_t numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE, 0);
-    if (numberOfBytesReceived < 0)
-    {
-        printErrorAndExit("recv() failed");
-    }
-
-    printf("< ");
-    puts(buffer);
+    ssize_t numberOfBytesReceived;
+    char *responseToClient;
 
     // Send received string and receive again until end of stream
-    while (numberOfBytesReceived > 0)
+    do
     {
+        // Receive message from client
+        numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE, 0);
+        if (numberOfBytesReceived < 0)
+        {
+            printErrorAndExit("recv() failed");
+        }
+
+        printf("< ");
+        puts(buffer);
+
+        // process message and return the string to send back to the client
+        responseToClient = processMessage(buffer, clientSocket);
+        // if some error happened, leave the handler
+        if (responseToClient == NULL)
+        {
+            return;
+        }
+
         // 0 indicates end of stream
         // Echo message back to client
         ssize_t numberOfBytesSent = send(clientSocket, buffer, numberOfBytesReceived, 0);
@@ -155,13 +216,10 @@ void handleClient(int clientSocket)
             printErrorAndExit("send() sent unexpected number of bytes");
         }
 
-        // See if there is more data to receive
-        numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE, 0);
-        if (numberOfBytesReceived < 0)
-        {
-            printErrorAndExit("recv() failed");
-        }
-    }
+        // reset buffer
+        memset(&buffer, 0, sizeof(buffer));
+
+    } while (numberOfBytesReceived > 0);
 
     close(clientSocket); // Close client socket
 }
