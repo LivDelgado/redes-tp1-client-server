@@ -8,7 +8,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-static const int BUFSIZE = 500; // tamanho máximo da mensagem
+#define BUFSIZE 500 // tamanho máximo da mensagem
 
 void printErrorAndExit(char *errorMessage)
 {
@@ -80,29 +80,24 @@ void receiveResponseFromServer(int clientSocket, size_t messageLength)
 {
    unsigned int totalBytesReceived = 0;
    ssize_t numberOfBytesReceived;
-   while (totalBytesReceived < messageLength)
+   char buffer[BUFSIZE] = ""; // I/O buffer
+
+   // Receive up to the buffer size bytes from the sender
+   numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE - 1, 0);
+
+   if (numberOfBytesReceived < 0)
    {
-      char buffer[BUFSIZE]; // I/O buffer
-      memset(&buffer, 0, sizeof(buffer));
-
-      // Receive up to the buffer size (minus 1 to leave space for a null terminator) bytes from the sender
-      numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE - 1, 0);
-
-      if (numberOfBytesReceived < 0)
-      {
-         printErrorAndExit("failed to receive response from server.");
-      }
-      else if (numberOfBytesReceived == 0)
-      {
-         printErrorAndExit("connection closed before intended!");
-      }
-
-      totalBytesReceived += numberOfBytesReceived;
-      buffer[numberOfBytesReceived] = '\0';
-
-      printf("< ");
-      puts(buffer); // imprime resposta do servidor
+      printErrorAndExit("failed to receive response from server.");
    }
+   else if (numberOfBytesReceived == 0)
+   {
+      printErrorAndExit("connection closed before intended!");
+   }
+
+   totalBytesReceived += numberOfBytesReceived;
+   buffer[numberOfBytesReceived] = '\0';
+
+   printf("< %s", buffer); // imprime resposta do servidor
 }
 
 void communicateWithServer(int clientSocket)

@@ -10,7 +10,7 @@
 #include "processor.h"
 
 // constants related to the protocol defined
-static const int BUFSIZE = 500;             // tamanho máximo da mensagem
+#define BUFSIZE 500             // tamanho máximo da mensagem
 static const int MAX_PENDING = 5;           // número máximo de solicitações de conexão
 static const int DEFAULT_PORT = 51511;      // porta default de conexão
 static const int ALLOW_IPV6_CONNECTION = 1; // flag de permissão para aceitar trabalhar com endereços ipv6
@@ -130,9 +130,7 @@ void handleClient(int serverSocket, int clientSocket)
 {
     steel *steelBuilding = newSteelIndustryBuilding();
 
-    char buffer[BUFSIZE]; // buffer for echo string
-    // reset buffer to avoid garbage
-    memset(&buffer, 0, sizeof(buffer));
+    char buffer[BUFSIZE] = "";
 
     ssize_t numberOfBytesReceived;
     char *responseToClient;
@@ -141,6 +139,7 @@ void handleClient(int serverSocket, int clientSocket)
     do
     {
         // Receive message from client
+        puts("DEBUG: receiving message from client.");
         numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE, 0);
         if (numberOfBytesReceived < 0)
         {
@@ -156,8 +155,8 @@ void handleClient(int serverSocket, int clientSocket)
         printf("< %s", buffer);
 
         // process message and return the string to send back to the client
-        char message[BUFSIZE];
-        memset(&message, 0, sizeof(message));
+        char message[BUFSIZE] = "";
+
         // copy into a new array to avoid messing something
         // remove last character because it is a line break
         strncpy(message, buffer, strlen(buffer) - 1);
@@ -183,10 +182,9 @@ void handleClient(int serverSocket, int clientSocket)
         }
 
         // 0 indicates end of stream
-        // Echo message back to client
+        strcat(responseToClient, "\n");
         ssize_t numberOfBytesSent = send(clientSocket, responseToClient, strlen(responseToClient), 0);
-        printf("> ");
-        puts(responseToClient);
+        printf("> %s", responseToClient);
 
         if (numberOfBytesSent < 0)
         {
