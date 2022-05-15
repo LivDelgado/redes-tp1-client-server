@@ -114,7 +114,7 @@ void communicateWithServer(int clientSocket)
       read = getline(&message, &messageLength, stdin); // get the message from user input
 
       // saída para desligar o cliente sem desligar o servidor
-      if (strcmp(message, "close client") == 0)
+      if (strcmp(message, "close client\n") == 0)
       {
          close(clientSocket);
          exit(0);

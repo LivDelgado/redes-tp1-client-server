@@ -14,10 +14,14 @@ static const int DEFAULT_PORT = 51511;      // porta default de conexão
 static const int ALLOW_IPV6_CONNECTION = 1; // flag de permissão para aceitar trabalhar com endereços ipv6
 
 // constants related to the commands processed by the server
-static const char *KILL = "kill";
-static const char *ADD = "add";
-static const char *REMOVE = "remove";
-static const char *LIST = "list";
+static const char *KILL_COMMAND = "kill";
+static const int KILL = 1;
+static const char *ADD_COMMAND = "add";
+static const int ADD = 2;
+static const char *REMOVE_COMMAND = "remove";
+static const int REMOVE = 3;
+static const char *LIST_COMMAND = "list";
+static const int LIST = 4;
 
 void printErrorAndExit(char *errorMessage)
 {
@@ -130,34 +134,52 @@ void setTheServerToListen(int serverSocket, int port)
     printf("Server listening at port %i\n", port);
 }
 
-int verifyCommandIsValid(char *command)
+int getCommandType(char *command)
 {
-    printf("command: %s, %i", command, strlen(command));
+    int wordLength = strlen(command);
 
-    if ((strcmp(command, KILL) == 0) ||
-        (strcmp(command, ADD) == 0) ||
-        (strcmp(command, LIST) == 0) ||
-        (strcmp(command, REMOVE) == 0))
-    {
-        return 1;
+    printf("%i characters. command splitted: ", wordLength);
+    for (int i = 0; i < wordLength; i++) {
+        printf("%c ", command[i]);
     }
+    printf("\n");
 
-    puts("invalid command!");
-    return 0;
+    if (strcmp(command, KILL_COMMAND) == 0)
+    {
+        return KILL;
+    }
+    else if (strcmp(command, ADD_COMMAND) == 0)
+    {
+        return ADD;
+    }
+    else if (strcmp(command, LIST_COMMAND) == 0)
+    {
+        return LIST;
+    }
+    else if (strcmp(command, REMOVE_COMMAND) == 0)
+    {
+        return REMOVE;
+    }
+    else
+    {
+        return -1;
+    }
 }
 
-char *processMessage(char *message, int clientSocket)
+char * processMessage(char *originalMessage, int clientSocket)
 {
+    char message[BUFSIZE];
+    strncpy(message, originalMessage, strlen(originalMessage) -1);
+
     // split message by spaces
     char *word;
     int wordCounter = 0;
     char *splitter = " ";
 
     word = strtok(message, splitter);
-    puts(message);
+    int commandType = getCommandType(word);
 
-    int validCommand = verifyCommandIsValid(word);   
-    if (validCommand == 0)
+    if (commandType < 0)
     {
         close(clientSocket);
         puts("Command unknown sent by client. Connection closed.");
@@ -170,7 +192,10 @@ char *processMessage(char *message, int clientSocket)
         word = strtok(NULL, " ");
     }
 
-    return "";
+    // reset message
+    memset(&message, 0, sizeof(message));
+
+    return "this is a server response";
 }
 
 void handleClient(int clientSocket)
@@ -194,7 +219,14 @@ void handleClient(int clientSocket)
         puts(buffer);
 
         // process message and return the string to send back to the client
-        responseToClient = processMessage(buffer, clientSocket);
+        char message[BUFSIZE];
+        // copy into a new array to avoid messing something
+        // remove last character because it is a line break
+        strncpy(message, buffer, strlen(buffer)-1);
+
+        responseToClient = processMessage(message, clientSocket);
+        memset(&message, 0, sizeof(message)); // clean message up
+
         // if some error happened, leave the handler
         if (responseToClient == NULL)
         {
@@ -203,7 +235,7 @@ void handleClient(int clientSocket)
 
         // 0 indicates end of stream
         // Echo message back to client
-        ssize_t numberOfBytesSent = send(clientSocket, buffer, numberOfBytesReceived, 0);
+        ssize_t numberOfBytesSent = send(clientSocket, responseToClient, strlen(responseToClient), 0);
         printf("> ");
         puts(buffer);
 
@@ -211,13 +243,11 @@ void handleClient(int clientSocket)
         {
             printErrorAndExit("send() failed");
         }
-        else if (numberOfBytesSent != numberOfBytesReceived)
-        {
-            printErrorAndExit("send() sent unexpected number of bytes");
-        }
 
         // reset buffer
         memset(&buffer, 0, sizeof(buffer));
+        // reset response to client
+        memset(&responseToClient, 0, sizeof(responseToClient));
 
     } while (numberOfBytesReceived > 0);
 
