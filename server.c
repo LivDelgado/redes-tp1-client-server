@@ -22,6 +22,8 @@ static const char *REMOVE_COMMAND = "remove";
 static const int REMOVE = 3;
 static const char *LIST_COMMAND = "list";
 static const int LIST = 4;
+static const char *READ_COMMAND = "read";
+static const int READ = 5;
 
 void printErrorAndExit(char *errorMessage)
 {
@@ -153,6 +155,10 @@ int getCommandType(char *command)
     else if (strcmp(command, REMOVE_COMMAND) == 0)
     {
         return REMOVE;
+    }
+    else if (strcmp(command, READ_COMMAND) == 0)
+    {
+        return READ;
     }
     else
     {
