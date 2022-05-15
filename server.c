@@ -138,12 +138,6 @@ int getCommandType(char *command)
 {
     int wordLength = strlen(command);
 
-    printf("%i characters. command splitted: ", wordLength);
-    for (int i = 0; i < wordLength; i++) {
-        printf("%c ", command[i]);
-    }
-    printf("\n");
-
     if (strcmp(command, KILL_COMMAND) == 0)
     {
         return KILL;
@@ -166,10 +160,10 @@ int getCommandType(char *command)
     }
 }
 
-char * processMessage(char *originalMessage, int clientSocket)
+char *processMessage(char *originalMessage, int clientSocket)
 {
     char message[BUFSIZE];
-    strncpy(message, originalMessage, strlen(originalMessage) -1);
+    strncpy(message, originalMessage, strlen(originalMessage) - 1);
 
     // split message by spaces
     char *word;
@@ -222,7 +216,7 @@ void handleClient(int clientSocket)
         char message[BUFSIZE];
         // copy into a new array to avoid messing something
         // remove last character because it is a line break
-        strncpy(message, buffer, strlen(buffer)-1);
+        strncpy(message, buffer, strlen(buffer) - 1);
 
         responseToClient = processMessage(message, clientSocket);
         memset(&message, 0, sizeof(message)); // clean message up
