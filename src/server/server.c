@@ -144,7 +144,8 @@ void handleClient(int clientSocket)
         {
             printErrorAndExit("recv() failed");
         }
-        else if (numberOfBytesReceived == 0) {
+        else if (numberOfBytesReceived == 0)
+        {
             puts("Client closed the connection!");
             close(clientSocket);
             return;
@@ -291,9 +292,6 @@ int main(int argc, char *argv[])
     puts("Socket created! Binding to local address.");
     bindToLocalAddress(serverSocket, port, addressIsV6);
 
-    puts("Let's make this server listen to something.");
-    puts("calling setTheServerToListen!");
     setTheServerToListen(serverSocket, port);
-
     handleConnections(serverSocket, addressIsV6);
 }
