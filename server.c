@@ -128,30 +128,39 @@ void handleClient(int clientSocket)
     char buffer[BUFSIZE]; // buffer for echo string
 
     // Receive message from client
-    ssize_t numBytesRcvd = recv(clientSocket, buffer, BUFSIZE, 0);
-    if (numBytesRcvd < 0)
+    ssize_t numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE, 0);
+    if (numberOfBytesReceived < 0)
     {
         printErrorAndExit("recv() failed");
     }
 
+    printf("< ");
+    puts(buffer);
+
     // Send received string and receive again until end of stream
-    while (numBytesRcvd > 0)
-    { // 0 indicates end of stream
+    while (numberOfBytesReceived > 0)
+    {
+        // 0 indicates end of stream
         // Echo message back to client
-        ssize_t numBytesSent = send(clientSocket, buffer, numBytesRcvd, 0);
-        if (numBytesSent < 0)
+        ssize_t numberOfBytesSent = send(clientSocket, buffer, numberOfBytesReceived, 0);
+        printf("> ");
+        puts(buffer);
+
+        if (numberOfBytesSent < 0)
         {
             printErrorAndExit("send() failed");
         }
-        else if (numBytesSent != numBytesRcvd)
+        else if (numberOfBytesSent != numberOfBytesReceived)
         {
             printErrorAndExit("send() sent unexpected number of bytes");
         }
 
         // See if there is more data to receive
-        numBytesRcvd = recv(clientSocket, buffer, BUFSIZE, 0);
-        if (numBytesRcvd < 0)
+        numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE, 0);
+        if (numberOfBytesReceived < 0)
+        {
             printErrorAndExit("recv() failed");
+        }
     }
 
     close(clientSocket); // Close client socket

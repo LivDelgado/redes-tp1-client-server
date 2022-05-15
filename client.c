@@ -26,47 +26,51 @@ int setupClientSocket(char *serverIpAddress, char *serverPort)
    addressCriteria.ai_protocol = IPPROTO_TCP;            // Only TCP protocol
 
    // Get address(es)
-   struct addrinfo *serverAddress; // Holder for returned list of server addrs
-   int rtnVal = getaddrinfo(serverIpAddress, serverPort, &addressCriteria, &serverAddress);
-   if (rtnVal != 0)
+   struct addrinfo *possibleServerAddresses; // Holder for returned list of server addrs
+   int gotPossibleSocketAddresses = getaddrinfo(serverIpAddress, serverPort, &addressCriteria, &possibleServerAddresses);
+   if (gotPossibleSocketAddresses != 0)
+   {
       printErrorAndExit("getaddrinfo() failed");
+   }
 
    int clientSocket = -1;
-   for (struct addrinfo *address = serverAddress; address != NULL; address = address->ai_next)
+   for (struct addrinfo *address = possibleServerAddresses; address != NULL; address = address->ai_next)
    {
       // Create a reliable, stream socket using TCP
       clientSocket = socket(address->ai_family, address->ai_socktype, address->ai_protocol);
       if (clientSocket < 0)
+      {
          continue; // Socket creation failed; try next address
+      }
 
       // Establish the connection to the echo server
       if (connect(clientSocket, address->ai_addr, address->ai_addrlen) == 0)
+      {
          break; // Socket connection succeeded; break and return socket
+      }
 
       close(clientSocket); // could not connect to that address, trying next one
       clientSocket = -1;
    }
 
-   freeaddrinfo(serverAddress); // free address info allocated
+   freeaddrinfo(possibleServerAddresses); // free address info allocated
 
    if (clientSocket < 0)
    {
       printErrorAndExit("Failed to setup client socket.");
    }
 
-   puts("Client connected!");
-
    return clientSocket;
 }
 
 void sendMessageToServer(int clientSocket, char *message, size_t messageLength)
 {
-   ssize_t numBytes = send(clientSocket, message, messageLength, 0);
-   if (numBytes < 0)
+   ssize_t numberOfBytesBeingSent = send(clientSocket, message, messageLength, 0);
+   if (numberOfBytesBeingSent < 0)
    {
       printErrorAndExit("failed to send message.");
    }
-   else if (numBytes != messageLength)
+   else if (numberOfBytesBeingSent != messageLength)
    {
       printErrorAndExit("could not send the correct message to the server.");
    }
@@ -75,26 +79,27 @@ void sendMessageToServer(int clientSocket, char *message, size_t messageLength)
 void receiveResponseFromServer(int clientSocket, size_t messageLength)
 {
    unsigned int totalBytesReceived = 0;
-   ssize_t numBytes;
+   ssize_t numberOfBytesReceived;
    while (totalBytesReceived < messageLength)
    {
       char buffer[BUFSIZE]; // I/O buffer
       // Receive up to the buffer size (minus 1 to leave space for a null terminator) bytes from the sender
-      numBytes = recv(clientSocket, buffer, BUFSIZE - 1, 0);
+      numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE - 1, 0);
 
-      if (numBytes < 0)
+      if (numberOfBytesReceived < 0)
       {
          printErrorAndExit("failed to receive response from server.");
       }
-      else if (numBytes == 0)
+      else if (numberOfBytesReceived == 0)
       {
          printErrorAndExit("connection closed before intended!");
       }
 
-      totalBytesReceived += numBytes;
-      buffer[numBytes] = '\0';
+      totalBytesReceived += numberOfBytesReceived;
+      buffer[numberOfBytesReceived] = '\0';
 
-      puts(buffer);
+      printf("< ");
+      puts(buffer); // imprime resposta do servidor
    }
 }
 
@@ -105,12 +110,11 @@ void communicateWithServer(int clientSocket)
       char *message = NULL; // create new message
       size_t messageLength;
       int read;
+      printf("> ");
       read = getline(&message, &messageLength, stdin); // get the message from user input
 
-      puts("new message to send to the server!");
-      puts(message);
-
-      if (strcmp(message, "close") == 0)
+      // saída para desligar o cliente sem desligar o servidor
+      if (strcmp(message, "close client") == 0)
       {
          close(clientSocket);
          exit(0);
@@ -118,10 +122,7 @@ void communicateWithServer(int clientSocket)
 
       messageLength = strlen(message); // get the message size
 
-      puts("sending message to server");
       sendMessageToServer(clientSocket, message, messageLength);
-
-      puts("receiving response from server");
       receiveResponseFromServer(clientSocket, messageLength);
    }
 }
@@ -137,7 +138,6 @@ int main(int argc, char *argv[])
    char *serverIpAddress = argv[1]; // o primeiro argumento é o endereço do servidor
    char *serverPort = argv[2];      // o segundo argumento é a porta de conexão do socket no servidor
 
-   puts("Setting up connection with the server!");
    int clientSocket = setupClientSocket(serverIpAddress, serverPort);
 
    communicateWithServer(clientSocket);
