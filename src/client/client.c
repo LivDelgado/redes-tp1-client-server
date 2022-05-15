@@ -83,6 +83,8 @@ void receiveResponseFromServer(int clientSocket, size_t messageLength)
    while (totalBytesReceived < messageLength)
    {
       char buffer[BUFSIZE]; // I/O buffer
+      memset(&buffer, 0, sizeof(buffer));
+
       // Receive up to the buffer size (minus 1 to leave space for a null terminator) bytes from the sender
       numberOfBytesReceived = recv(clientSocket, buffer, BUFSIZE - 1, 0);
 
@@ -109,7 +111,7 @@ void communicateWithServer(int clientSocket)
    {
       char *message = NULL; // create new message
       size_t messageLength;
-      
+
       printf("> ");
       getline(&message, &messageLength, stdin); // get the message from user input
 

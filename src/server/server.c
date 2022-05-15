@@ -126,7 +126,7 @@ void setTheServerToListen(int serverSocket, int port)
     printf("Server listening at port %i\n", port);
 }
 
-void handleClient(int clientSocket)
+void handleClient(int serverSocket, int clientSocket)
 {
     char buffer[BUFSIZE]; // buffer for echo string
     // reset buffer to avoid garbage
@@ -155,6 +155,7 @@ void handleClient(int clientSocket)
 
         // process message and return the string to send back to the client
         char message[BUFSIZE];
+        memset(&message, 0, sizeof(message));
         // copy into a new array to avoid messing something
         // remove last character because it is a line break
         strncpy(message, buffer, strlen(buffer) - 1);
@@ -168,6 +169,14 @@ void handleClient(int clientSocket)
             close(clientSocket);
             puts("Unknown command sent by client. Connection closed.");
             return;
+        }
+
+        if (strcmp(responseToClient, "kill") == 0)
+        {
+            puts("\nWARNING: kill command. shutting server down!!");
+            close(clientSocket);
+            close(serverSocket);
+            exit(0);
         }
 
         // 0 indicates end of stream
@@ -218,7 +227,7 @@ void handleIpv4(int serverSocket)
             puts("Unable to get client address");
         }
 
-        handleClient(clientSocket);
+        handleClient(serverSocket, clientSocket);
     }
 }
 
@@ -249,7 +258,7 @@ void handleIpv6(int serverSocket)
             puts("Unable to get client address");
         }
 
-        handleClient(clientSocket);
+        handleClient(serverSocket, clientSocket);
     }
 }
 

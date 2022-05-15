@@ -2,21 +2,24 @@
 
 // constants related to the commands processed by the server
 static const char *KILL_COMMAND = "kill";
-static const int KILL = 1;
+#define KILL 1
 static const char *ADD_COMMAND = "add";
-static const int ADD = 2;
+#define ADD 2
 static const char *REMOVE_COMMAND = "remove";
-static const int REMOVE = 3;
+#define REMOVE 3
 static const char *LIST_COMMAND = "list";
-static const int LIST = 4;
+#define LIST 4
 static const char *READ_COMMAND = "read";
-static const int READ = 5;
+#define READ 5
+
+static const char *SPLITTER = " ";
 
 // buffer size
 static const int BUFSIZE = 500;
 
 int getCommandType(char *command)
 {
+    printf("command %s, length: %lu\n", command, strlen(command));
     if (strcmp(command, KILL_COMMAND) == 0)
     {
         return KILL;
@@ -43,32 +46,82 @@ int getCommandType(char *command)
     }
 }
 
-char *processMessage(char *originalMessage)
+char *processKillCommand(char *message)
 {
-    char message[BUFSIZE];
-    strncpy(message, originalMessage, strlen(originalMessage) - 1);
+    char *output = NULL;
+    // the kill command should have only one word (kill)
+    char command[BUFSIZE];
+    memset(&command, 0, sizeof(command));
+    strncpy(command, message, strlen(message) - 1);
 
     // split message by spaces
     char *word;
-    int wordCounter = 0;
-    char *splitter = " ";
+    word = strtok(message, SPLITTER);
+    word = strtok(NULL, " ");
 
-    word = strtok(message, splitter);
-    int commandType = getCommandType(word);
+    printf("word: %s", word);
+
+    if (word == NULL)
+    {
+        output = "kill";
+    }
+
+    // reset command
+    memset(&command, 0, sizeof(command));
+    // reset word
+    memset(&word, 0, sizeof(word));
+
+    return output;
+}
+
+char *processAddCommand(char *message) { return NULL; }
+
+char *processRemoveCommand(char *message) { return NULL; }
+
+char *processListCommand(char *message) { return NULL; }
+
+char *processReadCommand(char *message) { return NULL; }
+
+char *processCommand(int commandType, char *message)
+{
+    switch (commandType)
+    {
+    case KILL:
+        return processKillCommand(message);
+    case ADD:
+        return processAddCommand(message);
+    case REMOVE:
+        return processRemoveCommand(message);
+    case LIST:
+        return processListCommand(message);
+    case READ:
+        return processReadCommand(message);
+    default:
+        return NULL;
+    }
+}
+
+char *processMessage(char *originalMessage)
+{
+    puts("reached the processor");
+    char message[BUFSIZE];
+    memset(&message, 0, sizeof(message));
+
+    strcpy(message, originalMessage);
+
+    // split message by spaces
+    char *command = strtok(message, SPLITTER);
+    int commandType = getCommandType(command);
 
     if (commandType < 0)
     {
         return NULL;
     }
 
-    while (word != NULL)
-    {
-        wordCounter += 1;
-        word = strtok(NULL, " ");
-    }
-
     // reset message
     memset(&message, 0, sizeof(message));
+    // reset command
+    memset(&command, 0, sizeof(command));
 
-    return "this is a server response";
+    return processCommand(commandType, originalMessage);
 }
