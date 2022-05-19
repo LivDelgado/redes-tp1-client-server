@@ -81,8 +81,6 @@ steel *newSteelIndustryBuilding()
     equipment *equipments = initializeEquipments();
     memcpy(newBuilding->equipments, equipments, sizeof(equipment) * 4);
 
-    printf("DEBUG: verifying steel building - sensor name: %s", newBuilding->sensors[0].name);
-
     return newBuilding;
 }
 
@@ -171,61 +169,65 @@ char *addSensorsToEquipment(int sensorsToAdd[4], int equipmentToAddSensorsTo, st
     }
     printf("DEBUG: ADD command - found equipment -> %i\n", equipment->id);
 
-    int existingSensorCounter = 0;
     int existingSensors[4] = {0, 0, 0, 0};
     int *sensors = equipment->sensors;
 
     puts("DEBUG: ADD command - checking if there is any sensor already added.");
     // validate if any of the sensors already exist
+    int existingSensorCounter = 0;
     for (int i = 0; i < 4; i++)
     {
-        if (sensorsToAdd[i] == 0)
+        // sensors to add != 0 => in that position we have a sensor id
+        // sensors[(sensorsToAdd[i]) - 1] == 1 => that sensor already exists
+        if (sensorsToAdd[i] != 0 && sensors[(sensorsToAdd[i]) - 1] == 1)
         {
-            continue;
-        }
-
-        if (sensors[sensorsToAdd[i] - 1] == 1)
-        {
-            existingSensors[existingSensorCounter] = sensorsToAdd[i];
+            existingSensors[(sensorsToAdd[i]) - 1] = 1;
             existingSensorCounter++;
         }
     }
 
-    if (existingSensorCounter > 0)
-    {
-        puts("DEBUG: ADD command - trying to add existing sensors.");
-        strcat(output, "sensor ");
-        for (int i = 0; i < existingSensorCounter; i++)
-        {
-            if (existingSensors[i] == 0)
-            {
-                continue;
-            }
+    puts("DEBUG: ADD command - all good to add the sensors to the equipment");
+    strcat(output, "sensor ");
 
-            char sensorsExistingMessage[BUFSIZE] = "";
-            sprintf(sensorsExistingMessage, "0%i ", existingSensors[i]);
+    int anySensorWasAdded = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        char sensorsExistingMessage[BUFSIZE] = "";
+        if (sensorsToAdd[i] != 0 && existingSensors[(sensorsToAdd[i]) - 1] == 0)
+        {
+            sprintf(sensorsExistingMessage, "0%i ", sensorsToAdd[i]);
             strcat(output, sensorsExistingMessage);
-            strcat(output, "already exists in ");
-            sprintf(sensorsExistingMessage, "0%i ", equipmentToAddSensorsTo);
-            strcat(output, sensorsExistingMessage);
+            equipment->sensors[(sensorsToAdd[i]) - 1] = 1;
+            anySensorWasAdded = 1;
         }
     }
-    else
+
+    if (anySensorWasAdded == 1)
     {
-        puts("DEBUG: ADD command - all good to add the sensors to the equipment");
-        strcat(output, "sensor ");
+        strcat(output, "added");
+    }
+
+    if (existingSensorCounter > 0)
+    {
+        if (anySensorWasAdded == 1)
+        {
+            strcat(output, " ");
+        }
+
+        char sensorsExistingMessage[BUFSIZE] = "";
+        puts("DEBUG: ADD command - trying to add existing sensors.");
         for (int i = 0; i < 4; i++)
         {
-            char sensorsExistingMessage[BUFSIZE] = "";
-            if (sensorsToAdd[i] != 0)
+            if (existingSensors[i] == 1)
             {
-                sprintf(sensorsExistingMessage, "0%i ", sensorsToAdd[i]);
+                sprintf(sensorsExistingMessage, "0%i ", (i+1));
                 strcat(output, sensorsExistingMessage);
-                equipment->sensors[sensorsToAdd[i] - 1] = 1;
             }
         }
 
-        strcat(output, "added");
+        strcat(output, "already exists in ");
+        sprintf(sensorsExistingMessage, "0%i ", equipmentToAddSensorsTo);
+        strcat(output, sensorsExistingMessage);
     }
 
     char *strToReturn = output;
@@ -322,7 +324,7 @@ char *processAddCommand(char *message, steel *steelBuilding)
                     output = "invalid sensor";
                     break;
                 }
-                sensorsToAdd[sensorCounter] = id;
+                sensorsToAdd[sensorCounter] = id; // sensors to add => {03, 01, 02, 04}
                 sensorCounter++;
             }
             else
