@@ -220,7 +220,7 @@ char *addSensorsToEquipment(int sensorsToAdd[4], int equipmentToAddSensorsTo, st
         {
             if (existingSensors[i] == 1)
             {
-                sprintf(sensorsExistingMessage, "0%i ", (i+1));
+                sprintf(sensorsExistingMessage, "0%i ", (i + 1));
                 strcat(output, sensorsExistingMessage);
             }
         }
@@ -235,6 +235,101 @@ char *addSensorsToEquipment(int sensorsToAdd[4], int equipmentToAddSensorsTo, st
     return strToReturn;
 }
 
+char *removeSensorsFromEquipment(int sensorsToRemove[4], int equipmentToRemoveSensorsFrom, steel *steelBuilding)
+{
+    puts("DEBUG: REMOVE command - going to remove sensors from the equipment!");
+
+    char output[BUFSIZE] = "";
+
+    equipment *equipment = getEquipment(steelBuilding, equipmentToRemoveSensorsFrom);
+    if (equipment == NULL)
+    {
+        return "invalid equipment";
+    }
+    printf("DEBUG: REMOVE command - found equipment -> %i\n", equipment->id);
+
+    int existingSensors[4] = {0, 0, 0, 0};
+    int triedToAddNonExistingSensors = 0;
+    int nonExistingSensors[4] = {0, 0, 0, 0};
+    int *sensors = equipment->sensors;
+
+    puts("DEBUG: REMOVE command - checking if the sensors exist.");
+    // validate if any of the sensors already exist
+    int existingSensorCounter = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        // sensors to add != 0 => in that position we have a sensor id
+        // sensors[(sensorsToAdd[i]) - 1] == 1 => that sensor already exists
+        if (sensorsToRemove[i] != 0)
+        {
+            if (sensors[(sensorsToRemove[i]) - 1] == 1)
+            {
+                existingSensors[(sensorsToRemove[i]) - 1] = 1;
+                existingSensorCounter++;
+            }
+            else
+            {
+                triedToAddNonExistingSensors = 1;
+                nonExistingSensors[(sensorsToRemove[i]) - 1] = 1;
+            }
+        }
+    }
+
+    // sensor [id] removed
+    // sensor [id] does not exist in [equipment]
+
+    strcat(output, "sensor ");
+
+    // remove the sensors that exist and add to the returning message
+    int anySensorWasRemoved = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        char sensorsRemovedMessage[BUFSIZE] = "";
+        if (sensorsToRemove[i] != 0 && existingSensors[(sensorsToRemove[i]) - 1] == 1)
+        {
+            sprintf(sensorsRemovedMessage, "0%i ", sensorsToRemove[i]);
+            strcat(output, sensorsRemovedMessage);
+            equipment->sensors[(sensorsToRemove[i]) - 1] = 0;
+            anySensorWasRemoved = 1;
+        }
+    }
+
+    if (anySensorWasRemoved == 1)
+    {
+        strcat(output, "removed");
+    }
+
+    // client tried to remove sensors that did not exist?
+    if (triedToAddNonExistingSensors > 0)
+    {
+        if (anySensorWasRemoved == 1)
+        {
+            strcat(output, " ");
+        }
+
+        char sensorsNotExistingMessage[BUFSIZE] = "";
+        puts("DEBUG: REMOVE command - trying to remove non existing sensors.");
+        for (int i = 0; i < 4; i++)
+        {
+            if (nonExistingSensors[i] == 1)
+            {
+                sprintf(sensorsNotExistingMessage, "0%i ", (i + 1));
+                strcat(output, sensorsNotExistingMessage);
+            }
+        }
+
+        strcat(output, "does not exist in ");
+        sprintf(sensorsNotExistingMessage, "0%i ", equipmentToRemoveSensorsFrom);
+        strcat(output, sensorsNotExistingMessage);
+    }
+
+    char *strToReturn = output;
+
+    return strToReturn;
+}
+
+// -----------------------------------------------------------------------------------------------
+// Methods to process the commands
 char *processKillCommand(char *message)
 {
     char *output = NULL;
@@ -372,7 +467,102 @@ char *processAddCommand(char *message, steel *steelBuilding)
     return output;
 }
 
-char *processRemoveCommand(char *message) { return NULL; }
+char *processRemoveCommand(char *message, steel *steelBuilding)
+{
+    puts("DEBUG: remove command!");
+    char *output = NULL;
+
+    //
+    // remove sensor [sensorId] in [equipmentid]
+    //
+
+    char command[BUFSIZE] = "";
+
+    strcpy(command, message);
+
+    int finishedListingSensors = 0;
+
+    // split message by spaces
+    puts("DEBUG: finding out what are the words int the command");
+    char *word = strtok(command, SPLITTER);
+    word = strtok(NULL, " ");
+
+    int sensorCounter = 0;
+    int equipmentCounter = 0;
+
+    if (strcmp(word, "sensor") == 0) // second word should be sensor
+    {
+        int sensorsToRemove[4] = {0, 0, 0, 0};
+        int equipmentToRemoveSensorsFrom = 0;
+
+        while (word != NULL)
+        {
+            word = strtok(NULL, " ");
+            if (word == NULL)
+                break;
+
+            printf("DEBUG: REMOVE command - current word: %s\n", word);
+            if (strcmp(word, "in") == 0)
+            {
+                finishedListingSensors = 1;
+                continue;
+            }
+
+            // should be either a sensor or an equipment
+            int id = atoi(word);
+            if (id == 0)
+            { // invalid number!
+                puts("DEBUG: invalid number in the REMOVE command");
+                break;
+            }
+
+            if (finishedListingSensors == 0) // it should be a sensor
+            {
+                puts("DEBUG: REMOVE command - validating sensor");
+                if (invalidSensor(steelBuilding, id) == 1)
+                {
+                    output = "invalid sensor";
+                    break;
+                }
+                sensorsToRemove[sensorCounter] = id; // sensors to add => {03, 01, 02, 04}
+                sensorCounter++;
+            }
+            else
+            { // it should be an equipment
+                puts("DEBUG: ADD command - validating equipment");
+                equipmentCounter++;
+
+                if (equipmentCounter > 1)
+                {
+                    // the command is already invalid. we can not have more than 1 equipment per command.
+                    puts("DEBUG: ADD command - more equipments than it should have!");
+                    break;
+                }
+                if (invalidEquipment(steelBuilding, id) == 1)
+                {
+                    output = "invalid equipment";
+                    break;
+                }
+
+                equipmentToRemoveSensorsFrom = id;
+            }
+        }
+
+        puts("DEBUG: REMOVE command - finished reading the command. Let's process it.");
+
+        if (finishedListingSensors != 0 && sensorCounter > 0 && equipmentCounter == 1)
+        {
+            output = removeSensorsFromEquipment(sensorsToRemove, equipmentToRemoveSensorsFrom, steelBuilding);
+        }
+    }
+
+    // reset command
+    memset(&command, 0, sizeof(command));
+    // reset word
+    memset(&word, 0, sizeof(word));
+
+    return output;
+}
 
 char *processListCommand(char *message) { return NULL; }
 
@@ -387,7 +577,7 @@ char *processCommand(int commandType, char *message, steel *steelBuilding)
     case ADD:
         return processAddCommand(message, steelBuilding);
     case REMOVE:
-        return processRemoveCommand(message);
+        return processRemoveCommand(message, steelBuilding);
     case LIST:
         return processListCommand(message);
     case READ:
