@@ -328,6 +328,44 @@ char *removeSensorsFromEquipment(int sensorsToRemove[4], int equipmentToRemoveSe
     return strToReturn;
 }
 
+char *listSensorsInEquipment(int equipmentId, steel *steelBuilding)
+{
+    puts("DEBUG: LIST command - going to list sensors!");
+
+    char output[BUFSIZE] = "";
+
+    equipment *equipment = getEquipment(steelBuilding, equipmentId);
+    if (equipment == NULL)
+    {
+        return "invalid equipment";
+    }
+
+    printf("DEBUG: LIST command - found equipment -> %i\n", equipment->id);
+    int *sensors = equipment->sensors;
+
+    int equipmentHasSensors = 0;
+    char sensorList[BUFSIZE] = "";
+    for (int i = 0; i < 4; i++)
+    {
+        if (sensors[i] == 1)
+        {
+            sprintf(sensorList, "0%i ", (i + 1));
+            strcat(output, sensorList);
+
+            equipmentHasSensors = 1;
+        }
+    }
+
+    if (equipmentHasSensors == 0) // no sensor found in the equipment
+    {
+        strcat(output, "none");
+    }
+
+    char *strToReturn = output;
+
+    return strToReturn;
+}
+
 // -----------------------------------------------------------------------------------------------
 // Methods to process the commands
 char *processKillCommand(char *message)
@@ -564,7 +602,66 @@ char *processRemoveCommand(char *message, steel *steelBuilding)
     return output;
 }
 
-char *processListCommand(char *message) { return NULL; }
+char *processListCommand(char *message, steel *steelBuilding)
+{
+    puts("DEBUG: list command!");
+    char *output = NULL;
+
+    //
+    // list sensor in [equipmentid]
+    //
+
+    char command[BUFSIZE] = "";
+
+    strcpy(command, message);
+
+    // split message by spaces
+    puts("DEBUG: finding out what are the words int the command");
+    char *word = strtok(command, SPLITTER);
+    word = strtok(NULL, " ");
+
+    if (strcmp(word, "sensor") == 0) // second word should be sensor
+    {
+        int equipmentToListSensorsFrom = 0;
+
+        word = strtok(NULL, " ");
+
+        if (strcmp(word, "in") == 0)
+        { // third word should be in
+            word = strtok(NULL, " ");
+            // fourth and last word is the quipment id
+            int id = atoi(word);
+            if (id == 0)
+            { // invalid number!
+                puts("DEBUG: invalid number in the LIST command");
+            }
+            else
+            {
+                if (invalidEquipment(steelBuilding, id) == 1)
+                {
+                    output = "invalid equipment";
+                }
+                else
+                {
+                    equipmentToListSensorsFrom = id;
+
+                    word = strtok(NULL, " ");
+                    if (word == NULL) // valid command now that we only listed 1 equipment
+                    {
+                        output = listSensorsInEquipment(equipmentToListSensorsFrom, steelBuilding);
+                    }
+                }
+            }
+        }
+    }
+
+    // reset command
+    memset(&command, 0, sizeof(command));
+    // reset word
+    memset(&word, 0, sizeof(word));
+
+    return output;
+}
 
 char *processReadCommand(char *message) { return NULL; }
 
@@ -579,7 +676,7 @@ char *processCommand(int commandType, char *message, steel *steelBuilding)
     case REMOVE:
         return processRemoveCommand(message, steelBuilding);
     case LIST:
-        return processListCommand(message);
+        return processListCommand(message, steelBuilding);
     case READ:
         return processReadCommand(message);
     default:
