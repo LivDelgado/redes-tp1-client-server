@@ -366,6 +366,104 @@ char *listSensorsInEquipment(int equipmentId, steel *steelBuilding)
     return strToReturn;
 }
 
+int getRandomNumber()
+{
+    return (rand() % 9) + 1;
+}
+
+char *readSensorsInEquipment(int sensorsToRead[4], int equipmentToReadSensorsFrom, steel *steelBuilding)
+{
+    puts("DEBUG: READ command - going to remove sensors from the equipment!");
+
+    char output[BUFSIZE] = "";
+
+    equipment *equipment = getEquipment(steelBuilding, equipmentToReadSensorsFrom);
+    if (equipment == NULL)
+    {
+        return "invalid equipment";
+    }
+    printf("DEBUG: READ command - found equipment -> %i\n", equipment->id);
+
+    int existingSensors[4] = {0, 0, 0, 0};
+    int triedToReadNonExistingSensors = 0;
+    int nonExistingSensors[4] = {0, 0, 0, 0};
+    int *sensors = equipment->sensors;
+
+    puts("DEBUG: READ command - checking if the sensors exist.");
+    // validate if any of the sensors already exist
+    int existingSensorCounter = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        // sensors to read != 0 => in that position we have a sensor id
+        // sensors[(sensorsToRead[i]) - 1] == 1 => that sensor already exists
+        if (sensorsToRead[i] != 0)
+        {
+            if (sensors[(sensorsToRead[i]) - 1] == 1)
+            {
+                existingSensors[(sensorsToRead[i]) - 1] = 1;
+                existingSensorCounter++;
+            }
+            else
+            {
+                triedToReadNonExistingSensors = 1;
+                nonExistingSensors[(sensorsToRead[i]) - 1] = 1;
+            }
+        }
+    }
+
+    // sensor(s) [id] not installed
+    // [value.2f]
+    // [value.2f] and [id] not installed
+
+    // read the values that exist
+    int anySensorValueWasRead = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        char sensorsRemovedMessage[BUFSIZE] = "";
+        if (sensorsToRead[i] != 0 && existingSensors[(sensorsToRead[i]) - 1] == 1)
+        {
+            if (anySensorValueWasRead == 1 && i < 3)
+            {
+                strcat(output, " ");
+            }
+            sprintf(sensorsRemovedMessage, "%i.%i%i", getRandomNumber(), getRandomNumber(), getRandomNumber());
+            strcat(output, sensorsRemovedMessage);
+            anySensorValueWasRead = 1;
+        }
+    }
+
+    if (anySensorValueWasRead == 0)
+    {
+        strcat(output, "sensor(s) ");
+    }
+
+    // client tried to remove sensors that did not exist?
+    if (triedToReadNonExistingSensors > 0)
+    {
+        if (anySensorValueWasRead == 1)
+        {
+            strcat(output, " and ");
+        }
+
+        char sensorsNotExistingMessage[BUFSIZE] = "";
+        puts("DEBUG: REAAD command - trying to remove non existing sensors.");
+        for (int i = 0; i < 4; i++)
+        {
+            if (nonExistingSensors[i] == 1)
+            {
+                sprintf(sensorsNotExistingMessage, "0%i ", (i + 1));
+                strcat(output, sensorsNotExistingMessage);
+            }
+        }
+
+        strcat(output, "not installed");
+    }
+
+    char *strToReturn = output;
+
+    return strToReturn;
+}
+
 // -----------------------------------------------------------------------------------------------
 // Methods to process the commands
 char *processKillCommand(char *message)
@@ -663,7 +761,105 @@ char *processListCommand(char *message, steel *steelBuilding)
     return output;
 }
 
-char *processReadCommand(char *message) { return NULL; }
+char *processReadCommand(char *message, steel *steelBuilding)
+{
+    puts("DEBUG: read command!");
+    char *output = NULL;
+
+    //
+    // read [sensorId] in [equipmentid]
+    //
+
+    char command[BUFSIZE] = "";
+
+    strcpy(command, message);
+
+    int finishedListingSensors = 0;
+
+    // split message by spaces
+    puts("DEBUG: finding out what are the words int the command");
+    char *word = strtok(command, SPLITTER);
+
+    int sensorCounter = 0;
+    int equipmentCounter = 0;
+
+    int sensorsToRead[4] = {0, 0, 0, 0};
+    int equipmentToReadSensorsFrom = 0;
+
+    while (word != NULL)
+    {
+        word = strtok(NULL, " ");
+        if (word == NULL)
+            break;
+
+        printf("DEBUG: read command - current word: %s\n", word);
+        if (strcmp(word, "in") == 0)
+        {
+            finishedListingSensors = 1;
+            continue;
+        }
+
+        // should be either a sensor or an equipment
+        int id = atoi(word);
+        if (id == 0)
+        { // invalid number!
+            puts("DEBUG: invalid number in the READ command");
+            break;
+        }
+
+        if (finishedListingSensors == 0) // it should be a sensor
+        {
+            puts("DEBUG: READ command - validating sensor");
+            if (sensorCounter > 3)
+            {
+                // the command is already invalid. we can not have more than 4 sensors per equipment.
+                // if it is already bigger than 3, this is after the fourth
+                puts("DEBUG: READ command - more sensors than it should have!");
+                break;
+            }
+            if (invalidSensor(steelBuilding, id) == 1)
+            {
+                output = "invalid sensor";
+                break;
+            }
+            sensorsToRead[sensorCounter] = id; // sensors to add => {03, 01, 02, 04}
+            sensorCounter++;
+        }
+        else
+        { // it should be an equipment
+            puts("DEBUG: ADD command - validating equipment");
+            equipmentCounter++;
+
+            if (equipmentCounter > 1)
+            {
+                // the command is already invalid. we can not have more than 1 equipment per command.
+                puts("DEBUG: ADD command - more equipments than it should have!");
+                break;
+            }
+            if (invalidEquipment(steelBuilding, id) == 1)
+            {
+                output = "invalid equipment";
+                break;
+            }
+
+            equipmentToReadSensorsFrom = id;
+        }
+    }
+
+    puts("DEBUG: READ command - finished reading the command. Let's process it.");
+
+    if (finishedListingSensors != 0 && sensorCounter > 0 && equipmentCounter == 1)
+    {
+        output = readSensorsInEquipment(sensorsToRead, equipmentToReadSensorsFrom, steelBuilding);
+    }
+
+    // reset command
+    memset(&command, 0, sizeof(command));
+    // reset word
+    memset(&word, 0, sizeof(word));
+
+    return output;
+}
 
 char *processCommand(int commandType, char *message, steel *steelBuilding)
 {
@@ -678,7 +874,7 @@ char *processCommand(int commandType, char *message, steel *steelBuilding)
     case LIST:
         return processListCommand(message, steelBuilding);
     case READ:
-        return processReadCommand(message);
+        return processReadCommand(message, steelBuilding);
     default:
         return NULL;
     }

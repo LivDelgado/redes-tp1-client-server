@@ -6,6 +6,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <time.h>
+#include <stdlib.h>
 
 #include "processor.h"
 
@@ -296,6 +298,9 @@ int main(int argc, char *argv[])
     {
         port = atoi(argv[2]); // segundo argumento (opcional) -> porta
     }
+
+    // to generate a random number
+    srand(time(NULL));
 
     puts("Already got everything we needed to create the socket.");
     int serverSocket = createTcpSocket(addressIsV6);
