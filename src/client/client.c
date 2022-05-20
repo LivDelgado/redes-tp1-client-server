@@ -8,8 +8,9 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#define BUFSIZE 500 // tamanho máximo da mensagem
+#define BUFSIZE 500 // max message size
 
+// prints the message sent in the parameter and exit with error status
 void printErrorAndExit(char *errorMessage)
 {
    puts(errorMessage);
@@ -18,19 +19,19 @@ void printErrorAndExit(char *errorMessage)
 
 int setupClientSocket(char *serverIpAddress, char *serverPort)
 {
-   // Tell the system what kind(s) of address info we want
+   // tell the system what kind(s) of address info we want
    struct addrinfo addressCriteria;                      // Criteria for address match
    memset(&addressCriteria, 0, sizeof(addressCriteria)); // Zero out structure
    addressCriteria.ai_family = AF_UNSPEC;                // v4 or v6 is OK
    addressCriteria.ai_socktype = SOCK_STREAM;            // Only streaming sockets
    addressCriteria.ai_protocol = IPPROTO_TCP;            // Only TCP protocol
 
-   // Get address(es)
+   // get address(es)
    struct addrinfo *possibleServerAddresses; // Holder for returned list of server addrs
    int gotPossibleSocketAddresses = getaddrinfo(serverIpAddress, serverPort, &addressCriteria, &possibleServerAddresses);
    if (gotPossibleSocketAddresses != 0)
    {
-      printErrorAndExit("getaddrinfo() failed");
+      printErrorAndExit("ERROR: getaddrinfo() failed");
    }
 
    int clientSocket = -1;
@@ -57,7 +58,7 @@ int setupClientSocket(char *serverIpAddress, char *serverPort)
 
    if (clientSocket < 0)
    {
-      printErrorAndExit("Failed to setup client socket.");
+      printErrorAndExit("ERROR: Failed to setup client socket.");
    }
 
    return clientSocket;
@@ -68,11 +69,11 @@ void sendMessageToServer(int clientSocket, char *message, size_t messageLength)
    ssize_t numberOfBytesBeingSent = send(clientSocket, message, messageLength, 0);
    if (numberOfBytesBeingSent < 0)
    {
-      printErrorAndExit("failed to send message.");
+      printErrorAndExit("ERROR: failed to send message.");
    }
    else if (numberOfBytesBeingSent != messageLength)
    {
-      printErrorAndExit("could not send the correct message to the server.");
+      printErrorAndExit("ERROR: could not send the correct message to the server.");
    }
 }
 
@@ -87,17 +88,17 @@ void receiveResponseFromServer(int clientSocket, size_t messageLength)
 
    if (numberOfBytesReceived < 0)
    {
-      printErrorAndExit("failed to receive response from server.");
+      printErrorAndExit("ERROR: failed to receive response from server.");
    }
    else if (numberOfBytesReceived == 0)
    {
-      printErrorAndExit("connection closed before intended!");
+      printErrorAndExit("ERROR: connection closed before intended!");
    }
 
    totalBytesReceived += numberOfBytesReceived;
    buffer[numberOfBytesReceived] = '\0';
 
-   printf("< %s", buffer); // imprime resposta do servidor
+   printf("< %s", buffer); // prints message received from the server
 }
 
 void communicateWithServer(int clientSocket)
@@ -110,7 +111,7 @@ void communicateWithServer(int clientSocket)
       printf("> ");
       getline(&message, &messageLength, stdin); // get the message from user input
 
-      // saída para desligar o cliente sem desligar o servidor
+      // command to shut the client (and the client only) down
       if (strcmp(message, "close client\n") == 0)
       {
          close(clientSocket);
@@ -120,20 +121,20 @@ void communicateWithServer(int clientSocket)
       messageLength = strlen(message); // get the message size
 
       sendMessageToServer(clientSocket, message, messageLength);
+
       receiveResponseFromServer(clientSocket, messageLength);
    }
 }
 
 int main(int argc, char *argv[])
 {
-   // porta padrão é 51511
    if (argc != 3)
    {
-      printErrorAndExit("Invalid arguments. To run the client: client <server address> <server port>");
+      printErrorAndExit("ERROR: Invalid arguments. To run the client: client <server address> <server port>");
    }
 
-   char *serverIpAddress = argv[1]; // o primeiro argumento é o endereço do servidor
-   char *serverPort = argv[2];      // o segundo argumento é a porta de conexão do socket no servidor
+   char *serverIpAddress = argv[1]; // first argument is server address
+   char *serverPort = argv[2];      // second argument is server port
 
    int clientSocket = setupClientSocket(serverIpAddress, serverPort);
 
