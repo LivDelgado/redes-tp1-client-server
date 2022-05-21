@@ -148,6 +148,7 @@ char *addSensorsToEquipment(int sensorsToAdd[4], int equipmentToAddSensorsTo, st
             sprintf(sensorsExistingMessage, "0%i ", sensorsToAdd[i]);
             strcat(output, sensorsExistingMessage);
             equipment->sensors[(sensorsToAdd[i]) - 1] = 1;
+            steelBuilding->quantityOfSensors++;
             anySensorWasAdded = 1;
         }
     }

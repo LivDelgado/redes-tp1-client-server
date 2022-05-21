@@ -139,7 +139,7 @@ void handleClient(int serverSocket, int clientSocket)
     char buffer[BUFSIZE] = "";
 
     ssize_t numberOfBytesReceived;
-    char *responseToClient;
+    char responseToClient[BUFSIZE] = "";
 
     // Send received string and receive again until end of stream
     do
@@ -167,18 +167,19 @@ void handleClient(int serverSocket, int clientSocket)
         // remove last character because it is a line break
         strncpy(message, buffer, strlen(buffer) - 1);
 
-        responseToClient = processMessage(message, steelBuilding); // process message
-        memset(&message, 0, sizeof(message));                      // clean message up
+        char *messageReturn = processMessage(message, steelBuilding); // process message
+        memset(&message, 0, sizeof(message));                         // clean message up
 
+        puts("processed message");
         // if some error happened, close connection and leave the handler
-        if (responseToClient == NULL)
+        if (messageReturn == NULL)
         {
             close(clientSocket);
             puts("ERROR: Unknown command sent by client. Connection closed.");
             return;
         }
 
-        if (strcmp(responseToClient, "kill") == 0) // received kill command, should shut down
+        if (strcmp(messageReturn, "kill") == 0) // received kill command, should shut down
         {
             puts("WARNING: kill command. shutting server down!!");
             close(clientSocket);
@@ -188,6 +189,7 @@ void handleClient(int serverSocket, int clientSocket)
         }
 
         // send response to client
+        strcat(responseToClient, messageReturn);
         strcat(responseToClient, "\n");
         ssize_t numberOfBytesSent = send(clientSocket, responseToClient, strlen(responseToClient), 0);
         printf("> %s", responseToClient);
