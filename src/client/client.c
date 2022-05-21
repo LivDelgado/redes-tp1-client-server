@@ -90,9 +90,9 @@ void receiveResponseFromServer(int clientSocket, size_t messageLength)
    {
       printErrorAndExit("ERROR: failed to receive response from server.");
    }
-   else if (numberOfBytesReceived == 0)
+   else if (numberOfBytesReceived == 0 )
    {
-      printErrorAndExit("ERROR: connection closed before intended!");
+      printErrorAndExit("WARNING: server closed the connection!");
    }
 
    totalBytesReceived += numberOfBytesReceived;

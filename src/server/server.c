@@ -170,7 +170,6 @@ void handleClient(int serverSocket, int clientSocket)
         char *messageReturn = processMessage(message, steelBuilding); // process message
         memset(&message, 0, sizeof(message));                         // clean message up
 
-        puts("processed message");
         // if some error happened, close connection and leave the handler
         if (messageReturn == NULL)
         {
