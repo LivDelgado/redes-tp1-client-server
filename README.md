@@ -2,7 +2,7 @@
 Implementação do trabalho prático 1 de Redes de Computadores (Sistemas de Informação UFMG, 2022/1)
 
 # Instruções de compilação
-> O sistema foi desenvolvido para ser executado em máquinas que rodam o Linux.
+> O sistema foi desenvolvido para ser executado em máquinas Linux.
 
 Para compilar o código:
 ```bash
